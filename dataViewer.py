@@ -67,6 +67,10 @@ class ImagePlot(HasTraits):
     save_plot_button = Button("Save Plots..")
     save_LineScans_button = Button("Save LineScans..")
     load_button = Button("Load")
+    load1_button =Button("Load 1")
+    load2_button =Button("Load 2")
+    load3_button =Button("Load 3")
+    load4_button =Button("Load 4")
     catch_bounds = Button("Catch Bounds")
     to_csv = Button("Generate .CSV")
     scale_set = Button("Set Scale")
@@ -78,6 +82,7 @@ class ImagePlot(HasTraits):
     colormap = Button("ApplyColorMap")
     genfilelist = Button("Generate File List")
     out_to_mat = Button("Generate .mat")
+    special = Button("Special")
 
     presmooth = Bool
     plot1button = Bool
@@ -111,6 +116,8 @@ class ImagePlot(HasTraits):
     xbounds=None
     ybounds=None
 
+
+
     #wildcard patterns
     file_wildcard = Str("zis File (*.zis)|*.zis|All files|*")
     file_wildcard2 = Str("png File (*.png)|*.png|All files|*")
@@ -143,6 +150,7 @@ class ImagePlot(HasTraits):
                             UItem('colormap'),
                             UItem('genfilelist'),
                             UItem('out_to_mat'),
+                            UItem('special'),
                             ),
                         show_border =True)
 
@@ -190,6 +198,12 @@ class ImagePlot(HasTraits):
                             UItem('flatten'),
                             UItem('catch_bounds'),
                             UItem('scale_set'),
+                        ),
+                        HGroup(
+                            UItem("load1_button"),
+                            UItem("load2_button"),
+                            UItem("load3_button"),
+                            UItem("load4_button"),
                         ),
                     ),
                 show_border = True)
@@ -347,6 +361,7 @@ class ImagePlot(HasTraits):
         self.slow_plot.title = "Slowline : " + str(self.fastscanline)
         self.fast_plot.title = "Fastline : " + str(self.fastscanline)
 
+
     def _flatten_fired(self):
         self._flatten()
 
@@ -363,47 +378,47 @@ class ImagePlot(HasTraits):
     def _flatten(self):
         y=0
         x=0
-        for line in self.dataset["data1"]:
+        for line in self.plotA['data']:
             x_axis = np.arange(0,int(len(line)))
             y_axis = np.array(line)
             slope,intercept,r_value,p_value,std_err = stats.linregress(x_axis,y_axis)
             x=0
             for point in line:
-                self.dataset["data1"][y,x] = point - (slope*x + intercept)
+                self.plotA['data'][y,x] = point - (slope*x + intercept)
                 x+=1
             y+=1
 
         y=0
         x=0
-        for line in self.dataset["data2"]:
+        for line in self.plotB['data']:
             x_axis = np.arange(0,int(len(line)))
             y_axis = np.array(line)
             slope,intercept,r_value,p_value,std_err = stats.linregress(x_axis,y_axis)
             x=0
             for point in line:
-                self.dataset["data2"][y,x] = point - (slope*x + intercept)
+                self.plotB['data'][y,x] = point - (slope*x + intercept)
                 x+=1
             y+=1
         y=0
         x=0
-        for line in self.dataset["data3"]:
+        for line in self.plotC['data']:
             x_axis = np.arange(0,int(len(line)))
             y_axis = np.array(line)
             slope,intercept,r_value,p_value,std_err = stats.linregress(x_axis,y_axis)
             x=0
             for point in line:
-                self.dataset["data3"][y,x] = point - (slope*x + intercept)
+                self.plotC['data'][y,x] = point - (slope*x + intercept)
                 x+=1
             y+=1
         y=0
         x=0
-        for line in self.dataset["data4"]:
+        for line in self.plotD['data']:
             x_axis = np.arange(0,int(len(line)))
             y_axis = np.array(line)
             slope,intercept,r_value,p_value,std_err = stats.linregress(x_axis,y_axis)
             x=0
             for point in line:
-                self.dataset["data4"][y,x] = point - (slope*x + intercept)
+                self.plotD['data'][y,x] = point - (slope*x + intercept)
                 x+=1
             y+=1
         self._plot()
@@ -871,6 +886,62 @@ class ImagePlot(HasTraits):
         self.data = pickle.load(file)
         file.close()
         print "\nfile.closed"
+        return
+    #########################################################
+    def _special_fired(self):
+        #load stitch
+        print "All resolutions must be the same"
+        a,b = 2,3 #raw_input("\tset rows and cols: ")
+        size = 512 #raw_input("\tsize:")
+        self.stitchdataA = np.zeros((size*a, size*b))
+        self.stitchdataB = np.zeros((size*a, size*b))
+        i = 1
+        col = 0
+        while i < a*b:
+            j = 1
+            row = 0
+            while j < b:
+                self._load_file(self._single_load())
+                self.plotA['plot'] = self.plta
+                self.plotA = self._pick_plots(self.plotA)
+                print col*size, row*size
+                self.stitchdataA[col*size : col*self.plotA["shape"][0], row*size : row*self.plotA["shape"][1]] = self.plotA
+                row = row+1
+                j = j+1
+                i = i+1
+            col = col+1
+
+
+        i = 1
+        col = 0
+        while i < a*b:
+            j = 1
+            row = 0
+            while j < b:
+                self._load_file(self._single_load())
+                self.plotB['plot'] = self.pltb
+                self.plotB = self._pick_plots(self.plotB)
+                self.stitchdataB[col*size : col*self.plotB["shape"][0], row*size : row*self.plotB["shape"][1]] = self.plotB
+                row = row+1
+                j = j+1
+                i = i+1
+            col = col+1
+
+        self.plotA["data"] = self.stitchdataA
+        self.plotB["data"] = self.stitchdataB
+        self.plotC["data"] = self.stitchdataA
+        self.plotD["data"] = self.stitchdataB
+        self.plotA["range"][0][0] = 0
+        self.plotA["range"][1][0] = 0
+        self.plotA["range"][0][1] = size*a
+        self.plotA["range"][1][1] = size*b
+        self.plotA["shape"] = (size*b, size*a)
+        self._plot()
+
+        gc.collect()
+        return
+
+    ########################################################
 
     def _pick_plots(self, plotdata):
         #plotA = Enum("R", "Phase", "R0","R/R0","Fluor", "X", "Y")
@@ -919,6 +990,14 @@ class ImagePlot(HasTraits):
         plotdata['data'] = data
         return plotdata
 
+    def _single_load(self):
+        dialog = FileDialog(action="open", wildcard=self.file_wildcard)
+        dialog.open()
+        if dialog.return_code == OK:
+            return dialog.path
+
+
+
     def _loader(self, i):
     #open file with specified path unpickle and prepare to pass to dictionary
 
@@ -949,7 +1028,61 @@ class ImagePlot(HasTraits):
         gc.collect()
         return
 
+    def _load1_button_fired(self):
+    #open file with specified path unpickle and prepare to pass to dictionary
 
+        self._load_file(self._single_load())
+
+      #--APPLY LOGIC CONDITIONS TO DATA AND ASSIGN TO PLOTING 2D ARRAYS
+
+        self.plotA['plot'] = self.plta
+
+        self.plotA = self._pick_plots(self.plotA)
+        gc.collect()
+        self._plot()
+        return
+
+    def _load2_button_fired(self):
+    #open file with specified path unpickle and prepare to pass to dictionary
+
+        self._load_file(self._single_load())
+
+      #--APPLY LOGIC CONDITIONS TO DATA AND ASSIGN TO PLOTING 2D ARRAYS
+
+        self.plotB['plot'] = self.pltb
+
+        self.plotB = self._pick_plots(self.plotB)
+        gc.collect()
+        self._plot()
+        return
+
+    def _load3_button_fired(self):
+    #open file with specified path unpickle and prepare to pass to dictionary
+
+        self._load_file(self._single_load())
+
+      #--APPLY LOGIC CONDITIONS TO DATA AND ASSIGN TO PLOTING 2D ARRAYS
+
+        self.plotC['plot'] = self.pltc
+
+        self.plotC = self._pick_plots(self.plotC)
+        gc.collect()
+        self._plot()
+        return
+
+    def _load4_button_fired(self):
+    #open file with specified path unpickle and prepare to pass to dictionary
+
+        self._load_file(self._single_load())
+
+      #--APPLY LOGIC CONDITIONS TO DATA AND ASSIGN TO PLOTING 2D ARRAYS
+
+        self.plotD['plot'] = self.pltd
+
+        self.plotD = self._pick_plots(self.plotD)
+        gc.collect()
+        self._plot()
+        return
 
 ##    def _presmooth(self, x,y):
 ##        #flatten X and Y
